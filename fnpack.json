@@ -6,6 +6,45 @@
     "homepage": "https://github.com/Jadeiin/FnDepot"
   },
   "apps": {
+    "beszel-agent": {
+      "display_name": "Beszel Agent",
+      "desc": "连接 Beszel Hub 的 NAS 监控代理",
+      "platform": [
+        "x86",
+        "arm"
+      ],
+      "categories": [
+        "系统工具"
+      ],
+      "icon_url": "apps/beszel-agent/icon-256.png",
+      "maintainer": "henrygd",
+      "maintainer_url": "https://github.com/henrygd/beszel",
+      "distributor": "Jadeiin",
+      "distributor_url": "https://github.com/Jadeiin/FnDepot",
+      "run_as": "package",
+      "install_type": "",
+      "is_docker": false,
+      "service_port": "",
+      "releases": {
+        "0.21.2": {
+          "updated_at": "2026-11-23T16:47:34Z",
+          "changelog": "Upstream v0.21.2",
+          "packages": {
+            "x86": {
+              "download_url": "https://github.com/Jadeiin/FnDepot/releases/download/beszel-agent-v0.21.2/beszel-agent_0.21.2_x86.fpk",
+              "sha256": "69c6b9017994c8298429ac770a04b11576bfdf77e308ef5155c4281bc36bff12",
+              "size": 4489939
+            },
+            "arm": {
+              "download_url": "https://github.com/Jadeiin/FnDepot/releases/download/beszel-agent-v0.21.2/beszel-agent_0.21.2_arm.fpk",
+              "sha256": "da8c2fa6ea57afb3e06df4aea98679021eb636de01309468877c2f070cdbb4fe",
+              "size": 4033538
+            }
+          }
+        }
+      },
+      "readme_url": "apps/beszel-agent/README.md"
+    },
     "Kavita": {
       "display_name": "Kavita",
       "desc": "漫画和电子书阅读服务器",
