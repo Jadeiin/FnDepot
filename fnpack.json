@@ -2,7 +2,87 @@
   "schema_version": "2",
   "source_info": {
     "name": "Jadeiin",
-    "author": "Jadeiin"
+    "author": "Jadeiin",
+    "homepage": "https://github.com/Jadeiin/FnDepot"
   },
-  "apps": {}
+  "apps": {
+    "Kavita": {
+      "display_name": "Kavita",
+      "desc": "漫画和电子书阅读服务器",
+      "platform": [
+        "x86",
+        "arm"
+      ],
+      "categories": [
+        "影音娱乐"
+      ],
+      "icon_url": "apps/kavita/icon-256.png",
+      "maintainer": "Kavita",
+      "maintainer_url": "https://github.com/Kareadita/Kavita",
+      "distributor": "Jadeiin",
+      "distributor_url": "https://github.com/Jadeiin/FnDepot",
+      "run_as": "package",
+      "install_type": "",
+      "is_docker": false,
+      "service_port": "5000",
+      "releases": {
+        "0.9.1004": {
+          "updated_at": "2026-11-23T12:27:11Z",
+          "changelog": "Upstream v0.9.1.4",
+          "packages": {
+            "x86": {
+              "download_url": "https://github.com/Jadeiin/FnDepot/releases/download/kavita-v0.9.1.4/Kavita_0.9.1.4_x86.fpk",
+              "sha256": "24bed06f011f6ebbee1c5d5656cce922374e44ac948eb3d12905f3c908bd32aa",
+              "size": 117083934
+            },
+            "arm": {
+              "download_url": "https://github.com/Jadeiin/FnDepot/releases/download/kavita-v0.9.1.4/Kavita_0.9.1.4_arm.fpk",
+              "sha256": "01ca1fcaea411149ed0a72b93030777534e9a86ca7157636f84ff02ac038be2a",
+              "size": 114766855
+            }
+          }
+        }
+      },
+      "readme_url": "apps/kavita/README.md"
+    },
+    "slskd": {
+      "display_name": "slskd",
+      "desc": "带 Web 界面的 Soulseek 客户端",
+      "platform": [
+        "x86",
+        "arm"
+      ],
+      "categories": [
+        "影音娱乐"
+      ],
+      "icon_url": "apps/slskd/icon-256.png",
+      "maintainer": "slskd",
+      "maintainer_url": "https://github.com/slskd/slskd",
+      "distributor": "Jadeiin",
+      "distributor_url": "https://github.com/Jadeiin/FnDepot",
+      "run_as": "package",
+      "install_type": "",
+      "is_docker": false,
+      "service_port": "5030",
+      "releases": {
+        "0.26.2": {
+          "updated_at": "2026-11-23T12:26:50Z",
+          "changelog": "Upstream v0.26.2",
+          "packages": {
+            "x86": {
+              "download_url": "https://github.com/Jadeiin/FnDepot/releases/download/slskd-v0.26.2/slskd_0.26.2_x86.fpk",
+              "sha256": "c2905c2a7c75d6557e35492611297298abe1bbcb7a89aa436d27ab17f0144b93",
+              "size": 54705713
+            },
+            "arm": {
+              "download_url": "https://github.com/Jadeiin/FnDepot/releases/download/slskd-v0.26.2/slskd_0.26.2_arm.fpk",
+              "sha256": "818f9eb5a5021e9f078949af33193cdffc3767d8f56ec4963622f6ec10e3e4b6",
+              "size": 52500042
+            }
+          }
+        }
+      },
+      "readme_url": "apps/slskd/README.md"
+    }
+  }
 }
