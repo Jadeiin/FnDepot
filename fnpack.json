@@ -26,6 +26,22 @@
       "is_docker": false,
       "service_port": "5000",
       "releases": {
+        "0.9.100401": {
+          "updated_at": "2026-11-23T13:48:11Z",
+          "changelog": "Upstream v0.9.1.4 · FPK r1",
+          "packages": {
+            "x86": {
+              "download_url": "https://github.com/Jadeiin/FnDepot/releases/download/kavita-v0.9.1.4-r1/Kavita_0.9.1.4-r1_x86.fpk",
+              "sha256": "dfd2e21dcbea9674653ddce433de40b7fee70741195ab61be8f28426e90b55c4",
+              "size": 117083839
+            },
+            "arm": {
+              "download_url": "https://github.com/Jadeiin/FnDepot/releases/download/kavita-v0.9.1.4-r1/Kavita_0.9.1.4-r1_arm.fpk",
+              "sha256": "ab1ac8a9861248380f7e1dd7b2bc3b0f2806b6e842dfbe61886fbb1f7a2dfb6a",
+              "size": 114764012
+            }
+          }
+        },
         "0.9.1004": {
           "updated_at": "2026-11-23T12:27:11Z",
           "changelog": "Upstream v0.9.1.4",
