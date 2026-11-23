@@ -15,6 +15,7 @@ import tempfile
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
+from typing import Optional
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
@@ -48,9 +49,9 @@ class App:
     display_name: str
     maintainer: str
     description: str
-    port: int
     executable: str
     assets: dict[str, str]
+    port: Optional[int] = None
     version_parts: int = 3
     categories: list[str] = field(default_factory=lambda: ["系统工具"])
     package_user: str = ""
@@ -238,7 +239,7 @@ def create_package(plan, arch, directory, upstream_archive):
     config_dir = directory / "config"
     wizard_dir = directory / "wizard"
     images_dir = app_dir / "ui" / "images"
-    for path in (cmd_dir, config_dir, wizard_dir, images_dir):
+    for path in (cmd_dir, config_dir, wizard_dir):
         path.mkdir(parents=True)
 
     with tempfile.TemporaryDirectory(dir=directory.parent) as extracted:
@@ -253,7 +254,6 @@ def create_package(plan, arch, directory, upstream_archive):
         payload_dir.chmod(0o755)
 
     shutil.copyfile(template / "service.sh", app_dir / "service.sh")
-    app_name = f"{app.package_id}.Application"
     manifest = {
         "appname": app.package_id,
         "version": plan["version"],
@@ -263,17 +263,11 @@ def create_package(plan, arch, directory, upstream_archive):
         "source": "thirdparty",
         "maintainer": app.maintainer,
         "maintainer_url": f"https://github.com/{app.repo}",
-        "desktop_uidir": "ui",
-        "desktop_applaunchname": app_name,
-        "service_port": app.port,
         "ctl_stop": "true",
-        "checkport": "true",
+        "checkport": "false" if app.port is None else "true",
         "disable_authorization_path": "false",
         "changelog": f"Upstream {plan['tag']}",
     }
-    (directory / "manifest").write_text(
-        "".join(f"{key}={value}\n" for key, value in manifest.items()), encoding="utf-8",
-    )
     (app_dir / "UPSTREAM.txt").write_text(
         f"{plan['source_url']}\n{plan['assets'][arch]['url']}\n"
         f"SHA-256: {plan['assets'][arch]['sha256']}\n",
@@ -283,16 +277,25 @@ def create_package(plan, arch, directory, upstream_archive):
     privilege = {"defaults": {"run-as": "package"}, "username": username, "groupname": username}
     (config_dir / "privilege").write_text(json.dumps(privilege) + "\n", encoding="utf-8")
     (config_dir / "resource").write_text("{}\n", encoding="utf-8")
-    ui = {".url": {app_name: {
-        "title": app.display_name, "icon": "images/icon_{0}.png", "type": "url",
-        "protocol": "http", "port": str(app.port), "url": "/", "allUsers": False,
-    }}}
-    (images_dir.parent / "config").write_text(json.dumps(ui, indent=2) + "\n", encoding="utf-8")
+    if app.port is not None:
+        app_name = f"{app.package_id}.Application"
+        manifest.update(desktop_uidir="ui", desktop_applaunchname=app_name, service_port=app.port)
+        images_dir.mkdir(parents=True)
+        ui = {".url": {app_name: {
+            "title": app.display_name, "icon": "images/icon_{0}.png", "type": "url",
+            "protocol": "http", "port": str(app.port), "url": "/", "allUsers": False,
+        }}}
+        (images_dir.parent / "config").write_text(json.dumps(ui, indent=2) + "\n", encoding="utf-8")
+
+    (directory / "manifest").write_text(
+        "".join(f"{key}={value}\n" for key, value in manifest.items()), encoding="utf-8",
+    )
 
     for size, name in ((64, "ICON.PNG"), (256, "ICON_256.PNG")):
         icon = template / f"icon-{size}.png"
         shutil.copyfile(icon, directory / name)
-        shutil.copyfile(icon, images_dir / f"icon_{size}.png")
+        if app.port is not None:
+            shutil.copyfile(icon, images_dir / f"icon_{size}.png")
 
     shutil.copyfile(ROOT / "packaging" / "main", cmd_dir / "main")
     for hook in HOOKS:

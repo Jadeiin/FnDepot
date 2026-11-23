@@ -99,6 +99,13 @@ class IndexTests(unittest.TestCase):
         self.assertEqual(entry["categories"], ["系统工具"])
         self.assertEqual(set(entry["releases"]["1.2.3"]["packages"]), {"arm"})
 
+    def test_headless_app_has_an_empty_service_port(self):
+        release = published_release("beszel-agent", "0.21.2")
+        index = fnpack_index.generate_index("owner/FnDepot", [release])
+        entry = index["apps"]["beszel-agent"]
+        self.assertEqual(entry["service_port"], "")
+        self.assertEqual(set(entry["releases"]["0.21.2"]["packages"]), {"x86", "arm"})
+
 
 if __name__ == "__main__":
     unittest.main()

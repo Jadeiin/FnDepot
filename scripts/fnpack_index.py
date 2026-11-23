@@ -75,7 +75,7 @@ def generate_index(repository, releases):
             "run_as": "package",
             "install_type": "",
             "is_docker": False,
-            "service_port": str(app.port),
+            "service_port": "" if app.port is None else str(app.port),
             "releases": {version: app_versions[version] for version in ordered[:100]},
         }
         if (ROOT / "apps" / slug / "README.md").is_file():

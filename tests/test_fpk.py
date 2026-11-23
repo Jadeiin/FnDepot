@@ -96,6 +96,32 @@ class PackageTests(unittest.TestCase):
             fpk.create_package(plan, "arm", output, upstream)
             self.assertEqual((output / "app/payload").stat().st_mode & 0o777, 0o755)
 
+    def test_headless_agent_package_keeps_wizards_without_a_desktop_url(self):
+        plan = fpk.resolve("beszel-agent", release_for("beszel-agent", "v0.21.2"))
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            upstream = directory / plan["assets"]["x86"]["name"]
+            elf = b"\x7fELF\x02\x01" + bytes(12) + (62).to_bytes(2, "little")
+            with tarfile.open(upstream, "w:gz") as archive:
+                binary = tarfile.TarInfo("beszel-agent")
+                binary.size = len(elf)
+                archive.addfile(binary, io.BytesIO(elf))
+
+            output = directory / "package"
+            fpk.create_package(plan, "x86", output, upstream)
+            package = directory / "beszel-agent.fpk"
+            fpk.build_community_package(output, package)
+            fpk.verify_package(package, plan, "x86")
+            with tarfile.open(package, "r:gz") as archive:
+                manifest = archive.extractfile("manifest").read().decode()
+                self.assertIn("checkport=false\n", manifest)
+                for field in ("desktop_uidir", "desktop_applaunchname", "service_port"):
+                    self.assertNotIn(f"{field}=", manifest)
+                self.assertEqual(json.load(archive.extractfile("wizard/install")),
+                                 json.load(archive.extractfile("wizard/config")))
+                with tarfile.open(fileobj=archive.extractfile("app.tgz"), mode="r|gz") as payload:
+                    self.assertNotIn("ui/config", payload.getnames())
+
     def test_kavita_archive_contains_a_directory_and_executable_with_same_name(self):
         plan = fpk.resolve("kavita", release_for("kavita", "v0.9.1.4"))
         with tempfile.TemporaryDirectory() as temporary:

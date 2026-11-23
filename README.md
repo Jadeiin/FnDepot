@@ -6,6 +6,7 @@ FnDepot 是飞牛 fnOS 原生 FPK 的打包与维护仓库。每个应用独立�
 
 | 应用 | 应用 ID | 支持架构 | Web 端口 |
 | --- | --- | --- | --- |
+| [Beszel Agent](apps/beszel-agent/README.md) | `beszel-agent` | x86_64、ARM64 | — |
 | [slskd](apps/slskd/README.md) | `slskd` | x86_64、ARM64 | `5030` |
 | [Kavita](apps/kavita/README.md) | `Kavita` | x86_64、ARM64 | `5000` |
 
@@ -41,7 +42,7 @@ rm -f "$plan"
 
 ## 添加应用
 
-1. 在 `apps/<名称>/` 新建 `app.json`，填写 GitHub 上游仓库、稳定且唯一的 `package_id`、应用信息、Web 端口和 Linux 可执行文件名。`assets` 按 `x86` 或 `arm` 声明可用的 ZIP 或 TAR.GZ 文件名，可用 `{tag}` 引用完整 Tag，用 `{version}` 引用去掉 `v` 前缀的版本。四段版本的上游设 `version_parts` 为 `4`，包内版本按 `major.minor.(patch * 1000 + revision)` 转成三段。`categories` 可选，默认是 `["系统工具"]`。 [应用配置示例](apps/slskd/app.json) · [FnDepot V2 分类](https://github.com/EWEDLCM/FnDepot/blob/main/README.md#42-固定分类)
+1. 在 `apps/<名称>/` 新建 `app.json`，填写 GitHub 上游仓库、稳定且唯一的 `package_id`、应用信息和 Linux 可执行文件名。有 Web 界面的应用用 `port` 指定桌面入口端口。`assets` 按 `x86` 或 `arm` 声明可用的 ZIP 或 TAR.GZ 文件名，可用 `{tag}` 引用完整 Tag，用 `{version}` 引用去掉 `v` 前缀的版本。四段版本的上游设 `version_parts` 为 `4`，包内版本按 `major.minor.(patch * 1000 + revision)` 转成三段。`categories` 可选，默认是 `["系统工具"]`。 [应用配置示例](apps/slskd/app.json) · [FnDepot V2 分类](https://github.com/EWEDLCM/FnDepot/blob/main/README.md#42-固定分类)
 2. 放入 `service.sh`、`icon-64.png`、`icon-256.png`。`service.sh` 设置 `binary` 并定义 `start_service`，用共享的 `launch` 启动原生程序。`package_user` 可指定运行用户和组，省略时用包 ID 将连字符替换为下划线。需要向导或自定义生命周期回调时，按 fnOS 文件名放到应用目录的 `wizard/` 或 `cmd/`。 [运行适配示例](apps/slskd/service.sh) · [共享生命周期脚本](packaging/main)
 3. 用 `python3 scripts/fpk.py list` 确认应用已发现，按本地打包流程生成 FPK，再到测试设备验证安装和升级。可添加 `README.md` 作为 Moo 应用详情页的安装说明。
 

@@ -1,0 +1,33 @@
+[
+  {
+    "stepTitle": "连接 Beszel Hub",
+    "items": [
+      {
+        "type": "text",
+        "field": "beszel_public_key",
+        "label": "Hub 公钥",
+        "helpText": "从 Beszel Hub 的「添加系统」中复制 KEY。",
+        "rules": [{ "required": true, "message": "请输入 Hub 公钥" }]
+      },
+      {
+        "type": "text",
+        "field": "beszel_hub_url",
+        "label": "Hub 地址",
+        "helpText": "WebSocket 连接时填写 Hub 的完整 HTTP 或 HTTPS 地址。仅使用 SSH 时留空。"
+      },
+      {
+        "type": "password",
+        "field": "beszel_token",
+        "label": "连接 Token",
+        "helpText": "从 Hub 的「添加系统」或令牌设置中复制 TOKEN。仅使用 SSH 时留空。"
+      },
+      {
+        "type": "text",
+        "field": "beszel_listen_port",
+        "label": "SSH 监听端口",
+        "helpText": "留空时只使用 WebSocket。填写 45876 或其他可用端口即可允许 Hub 经 SSH 直连。",
+        "rules": [{ "pattern": "^[0-9]{1,5}$", "message": "请输入数字端口" }]
+      }
+    ]
+  }
+]

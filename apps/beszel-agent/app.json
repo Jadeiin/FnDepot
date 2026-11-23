@@ -1,0 +1,12 @@
+{
+  "repo": "henrygd/beszel",
+  "package_id": "beszel-agent",
+  "display_name": "Beszel Agent",
+  "maintainer": "henrygd",
+  "description": "连接 Beszel Hub 的 NAS 监控代理",
+  "executable": "beszel-agent",
+  "assets": {
+    "x86": "beszel-agent_linux_amd64.tar.gz",
+    "arm": "beszel-agent_linux_arm64.tar.gz"
+  }
+}
