@@ -57,8 +57,8 @@ class UpstreamTests(unittest.TestCase):
 
     def test_kavita_revision_is_kept_in_release_and_ordered_in_manifest(self):
         plan = fpk.resolve("kavita", release_for("kavita", "v0.9.1.4"))
-        self.assertEqual(plan["release_tag"], "kavita-v0.9.1.4-r1")
-        self.assertEqual(plan["version"], "0.9.100401")
+        self.assertEqual(plan["release_tag"], "kavita-v0.9.1.4-r2")
+        self.assertEqual(plan["version"], "0.9.100402")
         self.assertEqual(plan["upstream_version"], "0.9.1.4")
         self.assertEqual(plan["assets"]["arm"]["name"], "kavita-linux-arm64.tar.gz")
         tags = ("v0.9.1", "v0.9.1.3", "v0.9.1.4", "v0.9.2", "v0.10.0")
@@ -112,7 +112,7 @@ class PackageTests(unittest.TestCase):
                 with tarfile.open(fileobj=archive.extractfile("app.tgz"), mode="r|gz") as payload:
                     self.assertIn("payload/Kavita", payload.getnames())
 
-    def test_kavita_launch_can_run_uname_with_a_restricted_path(self):
+    def test_kavita_launch_secures_pid_file_and_handles_a_restricted_path(self):
         with tempfile.TemporaryDirectory() as temporary:
             fixture = Path(temporary).resolve()
             target = fixture / "target"
@@ -129,10 +129,20 @@ class PackageTests(unittest.TestCase):
 
             (tools / "start-stop-daemon").write_text(
                 '#!/bin/sh\n'
+                'pid_file="$TRIM_PKGTMP/service.pid"\n'
                 'case "$1" in\n'
-                '    --status) test -f "$TRIM_PKGTMP/started" ;;\n'
+                '    --status)\n'
+                '        test -f "$TRIM_PKGTMP/started" || exit 3\n'
+                '        if [ -n "$(find "$pid_file" -perm -0002)" ]; then\n'
+                '            echo "start-stop-daemon: matching on world-writable pidfile is insecure" >&2\n'
+                '            exit 2\n'
+                '        fi ;;\n'
                 '    --start)\n'
                 '        uname -s > "$TRIM_PKGTMP/uname" || exit 127\n'
+                '        if [ ! -f "$pid_file" ]; then\n'
+                '            touch "$pid_file" && chmod 666 "$pid_file" || exit 1\n'
+                '        fi\n'
+                '        printf "1234\\n" > "$pid_file"\n'
                 '        printf "%s\\n" "$@" > "$TRIM_PKGTMP/started" ;;\n'
                 'esac\n'
             )
@@ -140,7 +150,7 @@ class PackageTests(unittest.TestCase):
                 (tools / name).write_text("#!/bin/sh\nexit 0\n")
             for executable in tools.iterdir():
                 executable.chmod(0o755)
-            for name in ("mkdir", "rm", "ln"):
+            for name in ("mkdir", "rm", "ln", "find", "touch", "chmod"):
                 (tools / name).symlink_to(shutil.which(name))
 
             env = {**os.environ, "PATH": str(tools),
@@ -150,6 +160,7 @@ class PackageTests(unittest.TestCase):
                 env=env, capture_output=True, text=True,
             )
             self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual((runtime / "service.pid").stat().st_mode & 0o777, 0o600)
             self.assertEqual((runtime / "uname").read_text().strip(), os.uname().sysname)
             launch = (runtime / "started").read_text().splitlines()
             self.assertEqual(launch[launch.index("--chdir") + 1], str(runtime / "kavita-runtime"))

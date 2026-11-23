@@ -35,7 +35,7 @@ rm -f "$plan"
 ## 在 Moo 中订阅
 
 1. 在 Moo 的应用源设置中添加这个 GitHub 仓库地址，或直接粘贴默认分支下 `fnpack.json` 的 Raw 链接。 [Jadeiin 应用源](https://raw.githubusercontent.com/Jadeiin/FnDepot/main/fnpack.json) · [Moo 应用源协议](https://github.com/Blue-Mink/moo/blob/v0.6.566/docs/Moo%E5%BA%94%E7%94%A8%E6%BA%90%E5%8D%8F%E8%AE%AE.md)
-2. 源同步后即可选择安装。Moo 通过 FPK 的应用 ID 和包内版本匹配可用更新。Kavita 的应用 ID 为 `Kavita`，上游 `v0.9.1.4` 的打包修订 `r1` 对应包内版本 `0.9.100401`。
+2. 源同步后即可选择安装。Moo 通过 FPK 的应用 ID 和包内版本匹配可用更新。Kavita 的应用 ID 为 `Kavita`，上游 `v0.9.1.4` 的打包修订 `r2` 对应包内版本 `0.9.100402`。
 
 发布完成后，工作流用正式 Release 中各架构 FPK 的下载地址、SHA-256 和字节大小更新默认分支上的 [fnpack.json](fnpack.json)。首次发布前索引为空。重跑发布也会同步已有 Release。
 

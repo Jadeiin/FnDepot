@@ -76,12 +76,13 @@ class IndexTests(unittest.TestCase):
         index = fnpack_index.generate_index("owner/FnDepot", [
             published_release("kavita", "0.9.1.4"),
             published_release("kavita", "0.9.1.4-r1"),
+            published_release("kavita", "0.9.1.4-r2"),
         ])
 
         releases = index["apps"]["Kavita"]["releases"]
-        self.assertEqual(list(releases), ["0.9.100401", "0.9.1004"])
-        self.assertTrue(releases["0.9.100401"]["packages"]["arm"]["download_url"].endswith(
-            "/kavita-v0.9.1.4-r1/Kavita_0.9.1.4-r1_arm.fpk",
+        self.assertEqual(list(releases), ["0.9.100402", "0.9.100401", "0.9.1004"])
+        self.assertTrue(releases["0.9.100402"]["packages"]["arm"]["download_url"].endswith(
+            "/kavita-v0.9.1.4-r2/Kavita_0.9.1.4-r2_arm.fpk",
         ))
 
     def test_adding_an_app_uses_its_declared_architectures(self):

@@ -21,6 +21,11 @@ running() {
 launch() (
     # The service must not inherit the lifecycle lock.
     exec 9>&-
+    # Set the mode explicitly before the daemon opens the file. An inherited
+    # default ACL can make a newly created pidfile world-writable.
+    if [ ! -e "$pid_file" ]; then
+        /usr/bin/install -m 0600 /dev/null "$pid_file" || fail "无法创建 $pid_file"
+    fi
     start-stop-daemon --start --background --make-pidfile \
         --pidfile "$pid_file" --exec "$binary" --chdir "$PWD" \
         --umask 077 --output "$log_file" -- "$@"
