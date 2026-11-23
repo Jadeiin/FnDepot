@@ -106,6 +106,13 @@ class IndexTests(unittest.TestCase):
         self.assertEqual(entry["service_port"], "")
         self.assertEqual(set(entry["releases"]["0.21.2"]["packages"]), {"x86", "arm"})
 
+    def test_beszel_monitoring_uses_moo_devtools_key(self):
+        release = published_release("beszel-agent", "0.21.2")
+        index = fnpack_index.generate_index("owner/FnDepot", [release])
+        entry = index["apps"]["beszel-agent"]
+        self.assertEqual(entry["categories"], ["系统工具"])
+        self.assertEqual(entry["labels"], ["devtools"])
+
 
 if __name__ == "__main__":
     unittest.main()

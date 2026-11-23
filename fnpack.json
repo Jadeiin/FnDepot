@@ -16,6 +16,9 @@
       "categories": [
         "系统工具"
       ],
+      "labels": [
+        "devtools"
+      ],
       "icon_url": "apps/beszel-agent/icon-256.png",
       "maintainer": "henrygd",
       "maintainer_url": "https://github.com/henrygd/beszel",
@@ -54,6 +57,9 @@
       ],
       "categories": [
         "影音娱乐"
+      ],
+      "labels": [
+        "media"
       ],
       "icon_url": "apps/kavita/icon-256.png",
       "maintainer": "Kavita",
@@ -125,6 +131,9 @@
       ],
       "categories": [
         "影音娱乐"
+      ],
+      "labels": [
+        "media"
       ],
       "icon_url": "apps/slskd/icon-256.png",
       "maintainer": "slskd",

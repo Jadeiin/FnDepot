@@ -6,7 +6,21 @@ import re
 from pathlib import Path
 from urllib.parse import quote
 
-from scripts.fpk import APPS, ROOT, package_filename, release_version, versions
+from scripts.fpk import APPS, ROOT, Category, package_filename, release_version, versions
+
+
+# Moo reads labels first and preserves canonical keys before keyword classification.
+MOO_CATEGORY_KEYS = {
+    Category.MEDIA: "media",
+    Category.SYSTEM_TOOLS: "devtools",
+    Category.DEVELOPMENT: "devtools",
+    Category.AI: "ai",
+    Category.LIFESTYLE: "lifestyle",
+    Category.SMART_HOME: "lifestyle",
+    Category.EDUCATION: "lifestyle",
+    Category.GAMES: "game",
+    Category.DRIVERS: "driver",
+}
 
 
 def release_packages(app, upstream_version, package_revision, release, repo_url):
@@ -67,6 +81,7 @@ def generate_index(repository, releases):
             "desc": app.description,
             "platform": list(app.assets),
             "categories": app.categories,
+            "labels": [MOO_CATEGORY_KEYS[category] for category in app.categories],
             "icon_url": f"apps/{slug}/icon-256.png",
             "maintainer": app.maintainer,
             "maintainer_url": f"https://github.com/{app.repo}",

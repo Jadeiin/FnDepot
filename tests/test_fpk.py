@@ -30,6 +30,18 @@ def release_for(app_name, tag):
 
 
 class UpstreamTests(unittest.TestCase):
+    def test_load_apps_rejects_invalid_v2_categories(self):
+        config = json.loads((fpk.ROOT / "apps/beszel-agent/app.json").read_text(encoding="utf-8"))
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            path = root / "beszel-agent" / "app.json"
+            path.parent.mkdir()
+            for categories in ("系统工具", [], ["devtools"], [["系统工具"]]):
+                with self.subTest(categories=categories):
+                    path.write_text(json.dumps({**config, "categories": categories}), encoding="utf-8")
+                    with self.assertRaisesRegex(ValueError, r"FnDepot categor.*app\.json"):
+                        fpk.load_apps(root)
+
     def test_added_application_supplies_its_own_architecture_and_asset_name(self):
         config = {
             "repo": "example/service",

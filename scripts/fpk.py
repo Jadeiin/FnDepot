@@ -14,6 +14,7 @@ import tarfile
 import tempfile
 import zipfile
 from dataclasses import dataclass, field
+from enum import Enum
 from pathlib import Path, PurePosixPath
 from typing import Optional
 from urllib.parse import quote
@@ -23,10 +24,6 @@ from urllib.request import Request, urlopen
 ROOT = Path(__file__).resolve().parent.parent
 ARCHES = {"x86": 62, "arm": 183}
 PACKAGE_REVISION_BASE = 100
-CATEGORIES = {
-    "影音娱乐", "系统工具", "编程开发", "AI赋能", "生活服务",
-    "智能智控", "教育学习", "游戏地带", "硬件驱动",
-}
 FNPACK_VERSION = "1.3.3"
 FNPACK_DOWNLOADS = {
     ("Linux", "x86_64"): (
@@ -42,6 +39,18 @@ HOOKS = (
 )
 
 
+class Category(str, Enum):
+    MEDIA = "影音娱乐"
+    SYSTEM_TOOLS = "系统工具"
+    DEVELOPMENT = "编程开发"
+    AI = "AI赋能"
+    LIFESTYLE = "生活服务"
+    SMART_HOME = "智能智控"
+    EDUCATION = "教育学习"
+    GAMES = "游戏地带"
+    DRIVERS = "硬件驱动"
+
+
 @dataclass(frozen=True)
 class App:
     repo: str
@@ -53,7 +62,7 @@ class App:
     assets: dict[str, str]
     port: Optional[int] = None
     version_parts: int = 3
-    categories: list[str] = field(default_factory=lambda: ["系统工具"])
+    categories: list[Category] = field(default_factory=lambda: [Category.SYSTEM_TOOLS])
     package_user: str = ""
     package_revision: int = 0
 
@@ -66,7 +75,16 @@ def load_apps(directory):
         if slug == "all" or not re.fullmatch(r"[a-z0-9][a-z0-9-]*", slug):
             raise ValueError(f"Invalid application directory: {config.parent}")
         with config.open(encoding="utf-8") as source:
-            app = App(**json.load(source))
+            fields = json.load(source)
+        if "categories" in fields:
+            categories = fields["categories"]
+            if not isinstance(categories, list) or not 1 <= len(categories) <= 2:
+                raise ValueError(f"Expected one or two FnDepot categories in {config}")
+            try:
+                fields["categories"] = [Category(category) for category in categories]
+            except ValueError as error:
+                raise ValueError(f"Invalid FnDepot category in {config} ({error})") from error
+        app = App(**fields)
         if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", app.package_id) or app.package_id in package_ids:
             raise ValueError(f"Expected a valid, unique package_id in {config}")
         if not app.assets or app.assets.keys() - ARCHES.keys():
@@ -75,10 +93,6 @@ def load_apps(directory):
             raise ValueError(f"Expected version_parts of 3 or 4 in {config}")
         if type(app.package_revision) is not int or not 0 <= app.package_revision < PACKAGE_REVISION_BASE:
             raise ValueError(f"Expected package_revision between 0 and 99 in {config}")
-        if not isinstance(app.categories, list) or not 1 <= len(app.categories) <= 2 or any(
-            category not in CATEGORIES for category in app.categories
-        ):
-            raise ValueError(f"Expected one or two FnDepot categories in {config}")
         apps[slug] = app
         package_ids.add(app.package_id)
     return apps
