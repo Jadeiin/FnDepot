@@ -1,0 +1,64 @@
+#!/bin/sh
+set -eu
+
+payload="$TRIM_APPDEST/payload"
+pid_file="$TRIM_PKGTMP/service.pid"
+log_file="$TRIM_PKGVAR/service.log"
+. "$TRIM_APPDEST/service.sh"
+
+fail() {
+    printf '%s\n' "$1" >&2
+    if [ -n "${TRIM_TEMP_LOGFILE:-}" ]; then
+        printf '%s\n' "$1" >> "$TRIM_TEMP_LOGFILE"
+    fi
+    exit 1
+}
+
+running() {
+    start-stop-daemon --status --pidfile "$pid_file" --exec "$binary"
+}
+
+launch() (
+    # The service must not inherit the lifecycle lock.
+    exec 9>&-
+    start-stop-daemon --start --background --make-pidfile \
+        --pidfile "$pid_file" --exec "$binary" --chdir "$PWD" \
+        --umask 077 --output "$log_file" -- "$@"
+)
+
+case "${1:-}" in
+    status)
+        if running; then
+            exit 0
+        fi
+        exit 3
+        ;;
+    start|stop)
+        mkdir -p "$TRIM_PKGTMP" "$TRIM_PKGVAR"
+        exec 9>"$TRIM_PKGTMP/lifecycle.lock"
+        flock -x 9
+        ;;
+    *)
+        exit 1
+        ;;
+esac
+
+if [ "$1" = stop ]; then
+    start-stop-daemon --stop --oknodo --retry TERM/30 --remove-pidfile \
+        --pidfile "$pid_file" --exec "$binary" || fail "服务未在 30 秒内停止。"
+    exit 0
+fi
+
+if running; then
+    exit 0
+fi
+test -x "$binary" || fail "找不到可执行文件 $binary"
+umask 077
+start_service || fail "无法启动服务。请查看 $log_file"
+for attempt in 1 2 3 4 5; do
+    sleep 1
+    if running; then
+        exit 0
+    fi
+done
+fail "服务未能保持运行。请查看 $log_file"

@@ -1,0 +1,32 @@
+[
+  {
+    "stepTitle": "slskd 登录设置",
+    "items": [
+      {
+        "type": "text",
+        "field": "slskd_web_user",
+        "label": "Web 用户名",
+        "initValue": "admin",
+        "rules": [{ "required": true, "message": "请输入 Web 用户名" }]
+      },
+      {
+        "type": "password",
+        "field": "slskd_web_password",
+        "label": "Web 密码",
+        "rules": [{ "required": true, "message": "请输入 Web 密码" }]
+      },
+      {
+        "type": "text",
+        "field": "slskd_soulseek_user",
+        "label": "Soulseek 用户名",
+        "rules": [{ "required": true, "message": "请输入 Soulseek 用户名" }]
+      },
+      {
+        "type": "password",
+        "field": "slskd_soulseek_password",
+        "label": "Soulseek 密码",
+        "rules": [{ "required": true, "message": "请输入 Soulseek 密码" }]
+      }
+    ]
+  }
+]

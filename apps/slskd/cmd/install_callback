@@ -1,0 +1,25 @@
+#!/bin/sh
+set -eu
+
+for value in "${slskd_web_user:-}" "${slskd_web_password:-}" \
+    "${slskd_soulseek_user:-}" "${slskd_soulseek_password:-}"; do
+    case "$value" in
+        ''|*'
+'*)
+            message='请填写 Web 和 Soulseek 的用户名及密码。字段不能包含换行。'
+            printf '%s\n' "$message" >&2
+            if [ -n "${TRIM_TEMP_LOGFILE:-}" ]; then
+                printf '%s\n' "$message" >> "$TRIM_TEMP_LOGFILE"
+            fi
+            exit 1
+            ;;
+    esac
+done
+
+umask 077
+mkdir -p "$TRIM_PKGETC"
+credentials=$(mktemp "$TRIM_PKGETC/credentials.XXXXXX")
+trap 'rm -f "$credentials"' EXIT
+printf '%s\n' "$slskd_web_user" "$slskd_web_password" \
+    "$slskd_soulseek_user" "$slskd_soulseek_password" > "$credentials"
+mv -f "$credentials" "$TRIM_PKGETC/credentials"
