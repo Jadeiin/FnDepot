@@ -6,6 +6,7 @@ import subprocess
 import tarfile
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 from unittest.mock import patch
 from urllib.parse import quote
@@ -70,7 +71,8 @@ class UpstreamTests(unittest.TestCase):
 
     def test_slskd_version_and_asset_name(self):
         plan = fpk.resolve("slskd", release_for("slskd", "0.26.2"))
-        self.assertEqual(plan["version"], "0.26.2")
+        self.assertEqual(plan["version"], "0.26.201")
+        self.assertEqual(plan["release_tag"], "slskd-v0.26.2-r1")
         self.assertEqual(plan["assets"]["x86"]["name"], "slskd-0.26.2-linux-x64.zip")
 
     def test_release_without_verified_assets_is_rejected(self):
@@ -81,6 +83,19 @@ class UpstreamTests(unittest.TestCase):
 
 
 class PackageTests(unittest.TestCase):
+    def test_slskd_payload_is_accessible_to_the_package_user(self):
+        plan = fpk.resolve("slskd", release_for("slskd", "0.26.2"))
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            upstream = directory / "slskd-0.26.2-linux-arm64.zip"
+            elf = b"\x7fELF\x02\x01" + bytes(12) + (183).to_bytes(2, "little")
+            with zipfile.ZipFile(upstream, "w") as archive:
+                archive.writestr("slskd", elf)
+
+            output = directory / "package"
+            fpk.create_package(plan, "arm", output, upstream)
+            self.assertEqual((output / "app/payload").stat().st_mode & 0o777, 0o755)
+
     def test_kavita_archive_contains_a_directory_and_executable_with_same_name(self):
         plan = fpk.resolve("kavita", release_for("kavita", "v0.9.1.4"))
         with tempfile.TemporaryDirectory() as temporary:

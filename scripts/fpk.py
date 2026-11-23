@@ -233,6 +233,7 @@ def create_package(plan, arch, directory, upstream_archive):
     app = APPS[slug]
     template = ROOT / "apps" / slug
     app_dir = directory / "app"
+    payload_dir = app_dir / "payload"
     cmd_dir = directory / "cmd"
     config_dir = directory / "config"
     wizard_dir = directory / "wizard"
@@ -247,7 +248,9 @@ def create_package(plan, arch, directory, upstream_archive):
             raise ValueError(f"Expected exactly one {app.executable} in {upstream_archive.name}")
         check_binary(binaries[0], arch)
         binaries[0].chmod(0o755)
-        shutil.move(binaries[0].parent, app_dir / "payload")
+        shutil.move(binaries[0].parent, payload_dir)
+        # A flat archive may leave the executable in the mode-0700 staging directory.
+        payload_dir.chmod(0o755)
 
     shutil.copyfile(template / "service.sh", app_dir / "service.sh")
     app_name = f"{app.package_id}.Application"
