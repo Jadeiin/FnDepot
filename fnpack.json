@@ -26,6 +26,22 @@
       "is_docker": false,
       "service_port": "5000",
       "releases": {
+        "0.9.100402": {
+          "updated_at": "2026-11-23T15:00:08Z",
+          "changelog": "Upstream v0.9.1.4 · FPK r2",
+          "packages": {
+            "x86": {
+              "download_url": "https://github.com/Jadeiin/FnDepot/releases/download/kavita-v0.9.1.4-r2/Kavita_0.9.1.4-r2_x86.fpk",
+              "sha256": "ddaf704108dec2afa64e49f537c69df9dd4a00388957da698b15e9ca85b45a9d",
+              "size": 117084127
+            },
+            "arm": {
+              "download_url": "https://github.com/Jadeiin/FnDepot/releases/download/kavita-v0.9.1.4-r2/Kavita_0.9.1.4-r2_arm.fpk",
+              "sha256": "79ba8cbb02503376fb7b6f760e72c2ff9aa78087c569eec6af3c15de3030029b",
+              "size": 114766554
+            }
+          }
+        },
         "0.9.100401": {
           "updated_at": "2026-11-23T13:48:11Z",
           "changelog": "Upstream v0.9.1.4 · FPK r1",
@@ -81,6 +97,22 @@
       "is_docker": false,
       "service_port": "5030",
       "releases": {
+        "0.26.201": {
+          "updated_at": "2026-11-23T15:00:00Z",
+          "changelog": "Upstream v0.26.2 · FPK r1",
+          "packages": {
+            "x86": {
+              "download_url": "https://github.com/Jadeiin/FnDepot/releases/download/slskd-v0.26.2-r1/slskd_0.26.2-r1_x86.fpk",
+              "sha256": "3cf128f00fdd9d17ba4852136900ccc8199fdc0fcd9a9b9a17450a495bf6d551",
+              "size": 54703910
+            },
+            "arm": {
+              "download_url": "https://github.com/Jadeiin/FnDepot/releases/download/slskd-v0.26.2-r1/slskd_0.26.2-r1_arm.fpk",
+              "sha256": "cf64b061fdade4f72735f34323192fb948431c3bd3b97f5ccec9781fc692d632",
+              "size": 52495476
+            }
+          }
+        },
         "0.26.2": {
           "updated_at": "2026-11-23T12:26:50Z",
           "changelog": "Upstream v0.26.2",
