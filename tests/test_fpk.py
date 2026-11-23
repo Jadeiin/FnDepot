@@ -95,7 +95,18 @@ class PackageTests(unittest.TestCase):
             output = directory / "package"
             fpk.create_package(plan, "arm", output, upstream)
             self.assertEqual((output / "app/payload/Kavita").read_bytes(), elf)
-            self.assertIn("appname=kavita-native\n", (output / "manifest").read_text())
+            self.assertIn("appname=Jadeiin.Kavita\n", (output / "manifest").read_text())
+            self.assertEqual(json.loads((output / "config/privilege").read_text()), {
+                "defaults": {"run-as": "package"},
+                "username": "fn_kavita",
+                "groupname": "fn_kavita",
+            })
+            package = directory / "Kavita.fpk"
+            fpk.build_community_package(output, package)
+            fpk.verify_package(package, plan, "arm")
+            with tarfile.open(package, "r:gz") as archive:
+                with tarfile.open(fileobj=archive.extractfile("app.tgz"), mode="r|gz") as payload:
+                    self.assertIn("payload/Kavita", payload.getnames())
 
     def test_kavita_launch_uses_runtime_directory_and_preserves_config(self):
         with tempfile.TemporaryDirectory() as temporary:

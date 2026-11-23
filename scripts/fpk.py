@@ -52,6 +52,7 @@ class App:
     assets: dict[str, str]
     version_parts: int = 3
     categories: list[str] = field(default_factory=lambda: ["系统工具"])
+    package_user: str = ""
 
 
 def load_apps(directory):
@@ -148,6 +149,13 @@ def sha256(path):
     with path.open("rb") as stream:
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(chunk)
+    return digest.hexdigest()
+
+
+def payload_checksum(stream):
+    digest = hashlib.md5()  # fnOS manifest uses MD5 for app.tgz.
+    for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+        digest.update(chunk)
     return digest.hexdigest()
 
 
@@ -255,7 +263,7 @@ def create_package(plan, arch, directory, upstream_archive):
         f"SHA-256: {plan['assets'][arch]['sha256']}\n",
         encoding="utf-8",
     )
-    username = app.package_id.replace("-", "_")
+    username = app.package_user or app.package_id.replace("-", "_")
     privilege = {"defaults": {"run-as": "package"}, "username": username, "groupname": username}
     (config_dir / "privilege").write_text(json.dumps(privilege) + "\n", encoding="utf-8")
     (config_dir / "resource").write_text("{}\n", encoding="utf-8")
@@ -281,6 +289,21 @@ def create_package(plan, arch, directory, upstream_archive):
         hook.chmod(0o755)
 
 
+def build_community_package(project, output):
+    payload = project / "app.tgz"
+    with tarfile.open(payload, "w:gz", compresslevel=6) as archive:
+        for entry in sorted((project / "app").iterdir()):
+            archive.add(entry, arcname=entry.name)
+
+    with payload.open("rb") as stream, (project / "manifest").open("a", encoding="utf-8") as manifest:
+        manifest.write(f"checksum={payload_checksum(stream)}\n")
+
+    with tarfile.open(output, "w:gz", compresslevel=1) as archive:
+        for entry in sorted(project.iterdir()):
+            if entry.name != "app":
+                archive.add(entry, arcname=entry.name)
+
+
 def verify_package(path, plan, arch):
     if not path.is_file():
         raise ValueError(f"fnpack did not produce {path.name}")
@@ -292,11 +315,9 @@ def verify_package(path, plan, arch):
         with archive.extractfile("manifest") as manifest_file:
             lines = manifest_file.read().decode().splitlines()
             fields = dict(tuple(value.strip() for value in line.split("=", 1)) for line in lines if "=" in line)
-        checksum = hashlib.md5()  # fnOS manifest uses MD5 for app.tgz.
         with archive.extractfile("app.tgz") as payload:
-            for chunk in iter(lambda: payload.read(1024 * 1024), b""):
-                checksum.update(chunk)
-    if fields.get("checksum") != checksum.hexdigest():
+            checksum = payload_checksum(payload)
+    if fields.get("checksum") != checksum:
         raise ValueError(f"Incorrect app.tgz checksum in {path.name}")
     package_id = APPS[plan["app"]].package_id
     if (fields.get("appname"), fields.get("version"), fields.get("platform")) != (package_id, plan["version"], arch):
@@ -323,13 +344,15 @@ def build(args):
     output.parent.mkdir(parents=True, exist_ok=True)
     if (args.key is None) != (args.cert is None):
         raise ValueError("Supply both --key and --cert for a signed package")
+    if args.community and args.key:
+        raise ValueError("Community packages do not use a developer key and certificate")
     signing = ["--nosign"]
     if args.key:
         signing = ["--key", str(args.key.resolve(strict=True)), "--cert", str(args.cert.resolve(strict=True))]
 
     with tempfile.TemporaryDirectory(prefix=".fpk-build-", dir=output.parent) as temporary:
         staging = Path(temporary)
-        fnpack = fnpack_binary(args.fnpack, staging)
+        fnpack = None if args.community else fnpack_binary(args.fnpack, staging)
         packages = []
         for arch in arches:
             asset = plan["assets"][arch]
@@ -346,9 +369,12 @@ def build(args):
 
                 project = work / "package"
                 create_package(plan, arch, project, upstream_archive)
-                subprocess.run([fnpack, "build", "--directory", project, *signing],
-                               cwd=work, env={**os.environ, "COPYFILE_DISABLE": "1"}, check=True)
                 actual = work / f"{app.package_id}.fpk"
+                if args.community:
+                    build_community_package(project, actual)
+                else:
+                    subprocess.run([fnpack, "build", "--directory", project, *signing],
+                                   cwd=work, env={**os.environ, "COPYFILE_DISABLE": "1"}, check=True)
                 verify_package(actual, plan, arch)
                 package = staging / package_filename(app, upstream_version, arch)
                 actual.rename(package)
@@ -380,6 +406,7 @@ def main():
     package.add_argument("--out", type=Path)
     package.add_argument("--asset-dir", type=Path, help="directory containing predownloaded upstream archives")
     package.add_argument("--fnpack", type=Path)
+    package.add_argument("--community", action="store_true", help="build a community FPK without developer signing")
     package.add_argument("--key", type=Path)
     package.add_argument("--cert", type=Path)
 

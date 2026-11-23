@@ -21,9 +21,14 @@ on:
         description: Exact upstream tag (one app only). Leave empty for latest stable.
         type: string
       publish:
-        description: Sign and publish a GitHub Release
+        description: Publish a GitHub Release and update the Moo source
         type: boolean
         default: false
+      signing:
+        description: FPK signing mode when publishing
+        type: choice
+        options: [signed, unsigned]
+        default: signed
 
 permissions:
   actions: read
@@ -37,6 +42,7 @@ jobs:
       contents: read
     outputs:
       apps: ${{ steps.apps.outputs.apps }}
+      publish_mode: ${{ steps.apps.outputs.publish_mode }}
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -48,6 +54,9 @@ jobs:
         env:
           SELECTED_APP: ${{ inputs.app || 'all' }}
           UPSTREAM_TAG: ${{ inputs.upstream_tag }}
+          PUBLISH:
+            ${{ (github.event_name == 'schedule' && vars.FNPACK_PUBLISH) ||
+                (github.event_name == 'workflow_dispatch' && inputs.publish && (inputs.signing || 'signed')) }}
         shell: bash
         run: |
           if [[ "$SELECTED_APP" == all && -n "$UPSTREAM_TAG" ]]; then
@@ -55,7 +64,15 @@ jobs:
             exit 1
           fi
           apps=$(python3 scripts/fpk.py list --json -- "$SELECTED_APP")
-          echo "apps=$apps" >> "$GITHUB_OUTPUT"
+          case "$PUBLISH" in
+            true|signed) publish_mode=signed ;;
+            unsigned) publish_mode=unsigned ;;
+            *) publish_mode=debug ;;
+          esac
+          {
+            echo "apps=$apps"
+            echo "publish_mode=$publish_mode"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Test release and package logic
         run: python3 -m unittest discover -s tests
@@ -74,6 +91,7 @@ jobs:
       cancel-in-progress: false
     env:
       APP: ${{ matrix.app }}
+      PUBLISH_MODE: ${{ needs.discover.outputs.publish_mode }}
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -85,24 +103,23 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           UPSTREAM_TAG: ${{ inputs.upstream_tag }}
-          PUBLISH: ${{ (github.event_name == 'schedule' && vars.FNPACK_PUBLISH == 'true') || (github.event_name == 'workflow_dispatch' && inputs.publish) }}
           CAN_SIGN: ${{ secrets.FNPACK_SIGNING_KEY != '' && secrets.FNPACK_SIGNING_CERT != '' }}
         shell: bash
         run: |
-          if [[ "$PUBLISH" == true && "$CAN_SIGN" != true ]]; then
-            echo '::error::Publishing requires FNPACK_SIGNING_KEY and FNPACK_SIGNING_CERT.'
+          if [[ "$PUBLISH_MODE" == signed && "$CAN_SIGN" != true ]]; then
+            echo '::error::Signed publishing requires FNPACK_SIGNING_KEY and FNPACK_SIGNING_CERT.'
             exit 1
           fi
 
           python3 scripts/fpk.py resolve "$APP" --tag "$UPSTREAM_TAG" > "$RUNNER_TEMP/upstream.json"
           tag=$(jq -r '.release_tag' "$RUNNER_TEMP/upstream.json")
           artifact="fpk-${tag}-${GITHUB_SHA}"
-          if [[ "$PUBLISH" == true ]]; then
+          if [[ "$PUBLISH_MODE" != debug ]]; then
             if state=$(gh release view "$tag" --json isDraft --jq '.isDraft' 2>/dev/null) && [[ "$state" == false ]]; then
               echo "$tag is already published."
               exit 0
             fi
-            artifact+="-signed"
+            artifact+="-$PUBLISH_MODE"
           else
             digest=$(sha256sum "$RUNNER_TEMP/upstream.json" | cut -c1-12)
             artifact+="-${digest}-debug"
@@ -118,19 +135,19 @@ jobs:
           {
             echo "artifact=$artifact"
             echo "tag=$tag"
-            echo "publish=$PUBLISH"
           } >> "$GITHUB_OUTPUT"
 
       - name: Build FPKs
         if: steps.plan.outputs.tag != ''
         env:
-          PUBLISH: ${{ steps.plan.outputs.publish }}
-          SIGNING_KEY: ${{ steps.plan.outputs.publish == 'true' && secrets.FNPACK_SIGNING_KEY || '' }}
-          SIGNING_CERT: ${{ steps.plan.outputs.publish == 'true' && secrets.FNPACK_SIGNING_CERT || '' }}
+          SIGNING_KEY: ${{ env.PUBLISH_MODE == 'signed' && secrets.FNPACK_SIGNING_KEY || '' }}
+          SIGNING_CERT: ${{ env.PUBLISH_MODE == 'signed' && secrets.FNPACK_SIGNING_CERT || '' }}
         shell: bash
         run: |
-          signing=()
-          if [[ "$PUBLISH" == true ]]; then
+          build_options=()
+          if [[ "$PUBLISH_MODE" == unsigned ]]; then
+            build_options=(--community)
+          elif [[ "$PUBLISH_MODE" == signed ]]; then
             signing_dir=$(mktemp -d)
             trap 'rm -rf "$signing_dir"' EXIT
             (
@@ -139,9 +156,9 @@ jobs:
               printf '%s\n' "$SIGNING_CERT" > "$signing_dir/developer.crt"
             )
             unset SIGNING_KEY SIGNING_CERT
-            signing=(--key "$signing_dir/developer.key" --cert "$signing_dir/developer.crt")
+            build_options=(--key "$signing_dir/developer.key" --cert "$signing_dir/developer.crt")
           fi
-          python3 scripts/fpk.py build "$RUNNER_TEMP/upstream.json" --out dist "${signing[@]}"
+          python3 scripts/fpk.py build "$RUNNER_TEMP/upstream.json" --out dist "${build_options[@]}"
           cd dist
           sha256sum --check --strict SHA256SUMS
 
@@ -157,8 +174,8 @@ jobs:
           compression-level: 0
           retention-days: 14
 
-      - name: Publish signed FPKs
-        if: steps.plan.outputs.publish == 'true'
+      - name: Publish FPKs
+        if: steps.plan.outputs.tag != '' && env.PUBLISH_MODE != 'debug'
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.plan.outputs.tag }}
@@ -166,7 +183,8 @@ jobs:
         run: |
           source_url=$(jq -r '.source_url' "$RUNNER_TEMP/upstream.json")
           version=$(jq -r '.version' "$RUNNER_TEMP/upstream.json")
-          notes=$(printf 'Native fnOS FPKs.\n\nUpstream source: %s\n\nFPK version: %s' "$source_url" "$version")
+          notes=$(printf 'Native fnOS FPKs.\n\nUpstream source: %s\n\nFPK version: %s\n\nFPK signing: %s' \
+            "$source_url" "$version" "$PUBLISH_MODE")
           if state=$(gh release view "$RELEASE_TAG" --json isDraft --jq '.isDraft' 2>/dev/null); then
             if [[ "$state" == true ]]; then
               gh release upload "$RELEASE_TAG" dist/*.fpk dist/SHA256SUMS --clobber
@@ -182,8 +200,7 @@ jobs:
     needs: [discover, package]
     if: >-
       ${{ !cancelled() && needs.discover.result == 'success' &&
-          ((github.event_name == 'schedule' && vars.FNPACK_PUBLISH == 'true') ||
-           (github.event_name == 'workflow_dispatch' && inputs.publish)) }}
+          needs.discover.outputs.publish_mode != 'debug' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
