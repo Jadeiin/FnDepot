@@ -9,6 +9,7 @@
   "port": 5000,
   "executable": "Kavita",
   "version_parts": 4,
+  "package_revision": 1,
   "assets": {
     "x86": "kavita-linux-x64.tar.gz",
     "arm": "kavita-linux-arm64.tar.gz"

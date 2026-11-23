@@ -57,11 +57,15 @@ class UpstreamTests(unittest.TestCase):
 
     def test_kavita_revision_is_kept_in_release_and_ordered_in_manifest(self):
         plan = fpk.resolve("kavita", release_for("kavita", "v0.9.1.4"))
-        self.assertEqual(plan["release_tag"], "kavita-v0.9.1.4")
-        self.assertEqual(plan["version"], "0.9.1004")
+        self.assertEqual(plan["release_tag"], "kavita-v0.9.1.4-r1")
+        self.assertEqual(plan["version"], "0.9.100401")
+        self.assertEqual(plan["upstream_version"], "0.9.1.4")
         self.assertEqual(plan["assets"]["arm"]["name"], "kavita-linux-arm64.tar.gz")
         tags = ("v0.9.1", "v0.9.1.3", "v0.9.1.4", "v0.9.2", "v0.10.0")
         mapped = [tuple(map(int, fpk.versions("kavita", tag)[1].split("."))) for tag in tags]
+        self.assertEqual(mapped, sorted(set(mapped)))
+        builds = [("v0.9.1.4", 0), ("v0.9.1.4", 1), ("v0.9.1.4", 2), ("v0.9.1.5", 1)]
+        mapped = [tuple(map(int, fpk.versions("kavita", tag, revision)[1].split("."))) for tag, revision in builds]
         self.assertEqual(mapped, sorted(set(mapped)))
 
     def test_slskd_version_and_asset_name(self):
@@ -108,7 +112,7 @@ class PackageTests(unittest.TestCase):
                 with tarfile.open(fileobj=archive.extractfile("app.tgz"), mode="r|gz") as payload:
                     self.assertIn("payload/Kavita", payload.getnames())
 
-    def test_kavita_launch_uses_runtime_directory_and_preserves_config(self):
+    def test_kavita_launch_can_run_uname_with_a_restricted_path(self):
         with tempfile.TemporaryDirectory() as temporary:
             fixture = Path(temporary).resolve()
             target = fixture / "target"
@@ -127,17 +131,26 @@ class PackageTests(unittest.TestCase):
                 '#!/bin/sh\n'
                 'case "$1" in\n'
                 '    --status) test -f "$TRIM_PKGTMP/started" ;;\n'
-                '    --start) printf "%s\\n" "$@" > "$TRIM_PKGTMP/started" ;;\n'
+                '    --start)\n'
+                '        uname -s > "$TRIM_PKGTMP/uname" || exit 127\n'
+                '        printf "%s\\n" "$@" > "$TRIM_PKGTMP/started" ;;\n'
                 'esac\n'
             )
             for name in ("flock", "sleep"):
                 (tools / name).write_text("#!/bin/sh\nexit 0\n")
             for executable in tools.iterdir():
                 executable.chmod(0o755)
+            for name in ("mkdir", "rm", "ln"):
+                (tools / name).symlink_to(shutil.which(name))
 
-            env = {**os.environ, "PATH": f"{tools}:{os.environ['PATH']}",
+            env = {**os.environ, "PATH": str(tools),
                    "TRIM_APPDEST": str(target), "TRIM_PKGVAR": str(data), "TRIM_PKGTMP": str(runtime)}
-            subprocess.run(["sh", fpk.ROOT / "packaging/main", "start"], env=env, check=True)
+            result = subprocess.run(
+                ["/bin/sh", fpk.ROOT / "packaging/main", "start"],
+                env=env, capture_output=True, text=True,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual((runtime / "uname").read_text().strip(), os.uname().sysname)
             launch = (runtime / "started").read_text().splitlines()
             self.assertEqual(launch[launch.index("--chdir") + 1], str(runtime / "kavita-runtime"))
             link = runtime / "kavita-runtime" / "config"

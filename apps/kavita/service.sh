@@ -18,5 +18,7 @@ start_service() {
     done
     ln -s "$config" "$runtime/config" || return 1
     cd "$runtime" || return 1
+    # Kavita starts uname by name while initializing its OS information.
+    export PATH="${PATH:+$PATH:}/usr/bin:/bin"
     launch
 }

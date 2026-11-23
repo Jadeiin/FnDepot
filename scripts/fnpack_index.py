@@ -6,14 +6,14 @@ import re
 from pathlib import Path
 from urllib.parse import quote
 
-from scripts.fpk import APPS, ROOT, package_filename, versions
+from scripts.fpk import APPS, ROOT, package_filename, release_version, versions
 
 
-def release_packages(app, upstream_version, release, repo_url):
+def release_packages(app, upstream_version, package_revision, release, repo_url):
     assets = {asset["name"]: asset for asset in release["assets"] if asset["state"] == "uploaded"}
     packages = {}
     for arch in app.assets:
-        name = package_filename(app, upstream_version, arch)
+        name = package_filename(app, upstream_version, arch, package_revision)
         asset = assets.get(name, {})
         digest = asset.get("digest") or ""
         size = asset.get("size")
@@ -39,17 +39,20 @@ def generate_index(repository, releases):
         slug, _, tag = release["tag_name"].rpartition("-v")
         if slug not in APPS:
             continue
+        tag, _, revision = tag.partition("-r")
         try:
-            upstream_version, version = versions(slug, tag)
+            package_revision = int(revision) if revision else 0
+            upstream_version, version = versions(slug, tag, package_revision)
         except ValueError:
             continue
-        if release["tag_name"] != f"{slug}-v{upstream_version}" or version in app_releases[slug]:
+        full_version = release_version(upstream_version, package_revision)
+        if release["tag_name"] != f"{slug}-v{full_version}" or version in app_releases[slug]:
             continue
-        packages = release_packages(APPS[slug], upstream_version, release, repo_url)
+        packages = release_packages(APPS[slug], upstream_version, package_revision, release, repo_url)
         if packages:
             app_releases[slug][version] = {
                 "updated_at": release["published_at"],
-                "changelog": f"Upstream v{upstream_version}",
+                "changelog": f"Upstream v{upstream_version}" + (f" · FPK r{package_revision}" if package_revision else ""),
                 "packages": packages,
             }
 

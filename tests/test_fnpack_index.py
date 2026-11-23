@@ -72,6 +72,18 @@ class IndexTests(unittest.TestCase):
         self.assertEqual(set(index["apps"]), {"slskd"})
         self.assertEqual(list(index["apps"]["slskd"]["releases"]), ["0.26.2"])
 
+    def test_packaging_revision_is_an_upgrade_for_an_existing_install(self):
+        index = fnpack_index.generate_index("owner/FnDepot", [
+            published_release("kavita", "0.9.1.4"),
+            published_release("kavita", "0.9.1.4-r1"),
+        ])
+
+        releases = index["apps"]["Kavita"]["releases"]
+        self.assertEqual(list(releases), ["0.9.100401", "0.9.1004"])
+        self.assertTrue(releases["0.9.100401"]["packages"]["arm"]["download_url"].endswith(
+            "/kavita-v0.9.1.4-r1/Kavita_0.9.1.4-r1_arm.fpk",
+        ))
+
     def test_adding_an_app_uses_its_declared_architectures(self):
         app = fpk.App(
             repo="example/service", package_id="example.service", display_name="Example",

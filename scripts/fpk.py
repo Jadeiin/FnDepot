@@ -21,6 +21,7 @@ from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parent.parent
 ARCHES = {"x86": 62, "arm": 183}
+PACKAGE_REVISION_BASE = 100
 CATEGORIES = {
     "影音娱乐", "系统工具", "编程开发", "AI赋能", "生活服务",
     "智能智控", "教育学习", "游戏地带", "硬件驱动",
@@ -53,6 +54,7 @@ class App:
     version_parts: int = 3
     categories: list[str] = field(default_factory=lambda: ["系统工具"])
     package_user: str = ""
+    package_revision: int = 0
 
 
 def load_apps(directory):
@@ -70,6 +72,8 @@ def load_apps(directory):
             raise ValueError(f"Expected x86 or arm release assets in {config}")
         if app.version_parts not in (3, 4):
             raise ValueError(f"Expected version_parts of 3 or 4 in {config}")
+        if type(app.package_revision) is not int or not 0 <= app.package_revision < PACKAGE_REVISION_BASE:
+            raise ValueError(f"Expected package_revision between 0 and 99 in {config}")
         if not isinstance(app.categories, list) or not 1 <= len(app.categories) <= 2 or any(
             category not in CATEGORIES for category in app.categories
         ):
@@ -82,12 +86,14 @@ def load_apps(directory):
 APPS = load_apps(ROOT / "apps")
 
 
-def versions(app_name, tag):
+def versions(app_name, tag, package_revision=0):
     parts = APPS[app_name].version_parts
     version = tag.removeprefix("v")
     fields = version.split(".")
     if len(fields) not in {3, parts} or any(not re.fullmatch(r"0|[1-9][0-9]*", field) for field in fields):
         raise ValueError(f"Unsupported stable version for {app_name}: {tag!r}")
+    if not 0 <= package_revision < PACKAGE_REVISION_BASE:
+        raise ValueError(f"Unsupported package revision for {app_name}: {package_revision}")
 
     major, minor, patch = (int(field) for field in fields[:3])
     if parts == 4:
@@ -95,11 +101,18 @@ def versions(app_name, tag):
         if revision >= 1000:
             raise ValueError(f"Version revision exceeds mapping range for {app_name}: {tag}")
         patch = patch * 1000 + revision
+    if package_revision:
+        # Leave room for package-only fixes and keep the old mapping for existing tags.
+        patch = patch * PACKAGE_REVISION_BASE + package_revision
     return version, f"{major}.{minor}.{patch}"
 
 
-def package_filename(app, upstream_version, arch):
-    return f"{app.package_id}_{upstream_version}_{arch}.fpk"
+def release_version(upstream_version, package_revision):
+    return f"{upstream_version}-r{package_revision}" if package_revision else upstream_version
+
+
+def package_filename(app, upstream_version, arch, package_revision=0):
+    return f"{app.package_id}_{release_version(upstream_version, package_revision)}_{arch}.fpk"
 
 
 def release_metadata(repo, tag):
@@ -118,7 +131,7 @@ def resolve(app_name, release):
     tag = release["tag_name"]
     if release.get("draft") or release.get("prerelease"):
         raise ValueError(f"Expected a stable release, got {app.repo} {tag}")
-    upstream_version, version = versions(app_name, tag)
+    upstream_version, version = versions(app_name, tag, app.package_revision)
     upstream_assets = {asset["name"]: asset for asset in release["assets"]}
     assets = {}
 
@@ -136,7 +149,7 @@ def resolve(app_name, release):
     return {
         "app": app_name,
         "tag": tag,
-        "release_tag": f"{app_name}-v{upstream_version}",
+        "release_tag": f"{app_name}-v{release_version(upstream_version, app.package_revision)}",
         "upstream_version": upstream_version,
         "version": version,
         "source_url": f"https://github.com/{app.repo}/tree/{tag}",
@@ -329,10 +342,10 @@ def build(args):
         plan = json.load(source)
     slug = plan["app"]
     app = APPS[slug]
-    upstream_version, version = versions(slug, plan["tag"])
-    release_tag = f"{slug}-v{upstream_version}"
+    upstream_version, version = versions(slug, plan["tag"], app.package_revision)
+    release_tag = f"{slug}-v{release_version(upstream_version, app.package_revision)}"
     if (plan["upstream_version"], plan["version"], plan["release_tag"]) != (upstream_version, version, release_tag):
-        raise ValueError("Build plan versions do not match its upstream tag")
+        raise ValueError("Build plan versions do not match the current app configuration. Run resolve again.")
     all_arches = args.arch in ("all", "both")
     arches = tuple(app.assets) if all_arches else (args.arch,)
     if not all_arches and args.arch not in app.assets:
@@ -376,7 +389,7 @@ def build(args):
                     subprocess.run([fnpack, "build", "--directory", project, *signing],
                                    cwd=work, env={**os.environ, "COPYFILE_DISABLE": "1"}, check=True)
                 verify_package(actual, plan, arch)
-                package = staging / package_filename(app, upstream_version, arch)
+                package = staging / package_filename(app, upstream_version, arch, app.package_revision)
                 actual.rename(package)
                 packages.append(package)
 
