@@ -95,11 +95,11 @@ class PackageTests(unittest.TestCase):
             output = directory / "package"
             fpk.create_package(plan, "arm", output, upstream)
             self.assertEqual((output / "app/payload/Kavita").read_bytes(), elf)
-            self.assertIn("appname=Jadeiin.Kavita\n", (output / "manifest").read_text())
+            self.assertIn("appname=Kavita\n", (output / "manifest").read_text())
             self.assertEqual(json.loads((output / "config/privilege").read_text()), {
                 "defaults": {"run-as": "package"},
-                "username": "fn_kavita",
-                "groupname": "fn_kavita",
+                "username": "Kavita",
+                "groupname": "Kavita",
             })
             package = directory / "Kavita.fpk"
             fpk.build_community_package(output, package)

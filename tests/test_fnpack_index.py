@@ -37,20 +37,20 @@ class IndexTests(unittest.TestCase):
             "author": "Jadeiin",
             "homepage": "https://github.com/owner/FnDepot",
         })
-        self.assertEqual(set(index["apps"]), {"Jadeiin.Kavita", "slskd"})
-        kavita = index["apps"]["Jadeiin.Kavita"]
+        self.assertEqual(set(index["apps"]), {"Kavita", "slskd"})
+        kavita = index["apps"]["Kavita"]
         self.assertEqual(kavita["display_name"], "Kavita")
         self.assertEqual(kavita["icon_url"], "apps/kavita/icon-256.png")
         self.assertEqual(kavita["readme_url"], "apps/kavita/README.md")
         self.assertEqual(list(kavita["releases"]), ["0.9.1010", "0.9.1004"])
         self.assertEqual(kavita["releases"]["0.9.1004"]["packages"], {
             "x86": {
-                "download_url": "https://github.com/owner/FnDepot/releases/download/kavita-v0.9.1.4/Jadeiin.Kavita_0.9.1.4_x86.fpk",
+                "download_url": "https://github.com/owner/FnDepot/releases/download/kavita-v0.9.1.4/Kavita_0.9.1.4_x86.fpk",
                 "sha256": "a" * 64,
                 "size": 100,
             },
             "arm": {
-                "download_url": "https://github.com/owner/FnDepot/releases/download/kavita-v0.9.1.4/Jadeiin.Kavita_0.9.1.4_arm.fpk",
+                "download_url": "https://github.com/owner/FnDepot/releases/download/kavita-v0.9.1.4/Kavita_0.9.1.4_arm.fpk",
                 "sha256": "b" * 64,
                 "size": 101,
             },
