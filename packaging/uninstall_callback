@@ -1,0 +1,33 @@
+#!/bin/sh
+set -eu
+
+if [ "${wizard_data_action:-}" != delete ] || [ "${TRIM_APP_STATUS:-UNINSTALL}" != UNINSTALL ]; then
+    exit 0
+fi
+
+fail() {
+    printf '%s\n' "$1" >&2
+    if [ -n "${TRIM_TEMP_LOGFILE:-}" ]; then
+        printf '%s\n' "$1" >> "$TRIM_TEMP_LOGFILE" || :
+    fi
+    exit 1
+}
+
+case "${TRIM_APPNAME:-}" in
+    ''|*[!A-Za-z0-9._-]*) fail '无法识别应用名称。' ;;
+esac
+case "${TRIM_PKGVAR:-}" in
+    /*) ;;
+    *) fail '无法定位应用数据目录。' ;;
+esac
+test -e "$TRIM_PKGVAR" || exit 0
+
+# fnOS may pass the /var/apps symlink or its volume directory directly.
+cd -P "$TRIM_PKGVAR" || fail '无法进入应用数据目录。'
+case "$PWD" in
+    */@appdata/"$TRIM_APPNAME") ;;
+    *) fail '应用数据目录与当前应用不匹配。' ;;
+esac
+
+# The app center owns the directory itself. Unlink symlinks without following them.
+find -P . -xdev -mindepth 1 -delete || fail '应用数据未能全部删除。'

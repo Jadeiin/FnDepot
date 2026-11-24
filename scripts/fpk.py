@@ -340,6 +340,8 @@ def create_package(plan, arch, directory, upstream_archive, runtime_archive=None
     shutil.copyfile(ROOT / "packaging" / "main", cmd_dir / "main")
     for hook in HOOKS:
         (cmd_dir / hook).write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    shutil.copyfile(ROOT / "packaging" / "uninstall_callback", cmd_dir / "uninstall_callback")
+    shutil.copyfile(ROOT / "packaging" / "wizard" / "uninstall", wizard_dir / "uninstall")
     for target_dir in (cmd_dir, wizard_dir):
         overrides = template / target_dir.name
         if overrides.is_dir():
@@ -366,11 +368,18 @@ def build_community_package(project, output):
 def verify_package(path, plan, arch):
     if not path.is_file():
         raise ValueError(f"fnpack did not produce {path.name}")
+    scripts = tuple(f"cmd/{hook}" for hook in ("main", *HOOKS))
+    required = (
+        "manifest", "app.tgz", "ICON.PNG", "ICON_256.PNG",
+        "config/privilege", "config/resource", "wizard/uninstall", *scripts,
+    )
     with tarfile.open(path, "r:gz") as archive:
-        if not all(archive.getmember(name).isfile() for name in ("manifest", "app.tgz", "cmd/main")):
-            raise ValueError(f"Incomplete FPK archive: {path.name}")
-        if not archive.getmember("cmd/main").mode & 0o111:
-            raise ValueError(f"Lifecycle script is not executable: {path.name}")
+        for name in required:
+            if not archive.getmember(name).isfile():
+                raise ValueError(f"Missing regular file {name} in {path.name}")
+        for name in scripts:
+            if not archive.getmember(name).mode & stat.S_IXUSR:
+                raise ValueError(f"Lifecycle script {name} is not executable in {path.name}")
         with archive.extractfile("manifest") as manifest_file:
             lines = manifest_file.read().decode().splitlines()
             fields = dict(tuple(value.strip() for value in line.split("=", 1)) for line in lines if "=" in line)

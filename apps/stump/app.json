@@ -7,6 +7,7 @@
   "categories": ["影音娱乐"],
   "port": 10801,
   "executable": "stump_server",
+  "package_revision": 1,
   "assets": {
     "x86": "linux-build-results.zip",
     "arm": "linux-arm-build-results.zip"

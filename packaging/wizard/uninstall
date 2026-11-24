@@ -1,0 +1,19 @@
+[
+  {
+    "stepTitle": "卸载应用",
+    "items": [
+      {
+        "type": "radio",
+        "field": "wizard_data_action",
+        "label": "如何处理应用数据？",
+        "initValue": "keep",
+        "options": [
+          { "label": "保留数据，供重新安装时使用", "value": "keep" },
+          { "label": "删除应用数据", "value": "delete" }
+        ],
+        "helpText": "删除会清空应用数据目录，包括存放在其中的设置、数据库、日志和下载文件。删除后无法恢复。",
+        "rules": [{ "required": true, "message": "请选择如何处理应用数据" }]
+      }
+    ]
+  }
+]

@@ -73,21 +73,21 @@ class UpstreamTests(unittest.TestCase):
 
     def test_kavita_revision_is_kept_in_release_and_ordered_in_manifest(self):
         plan = fpk.resolve("kavita", release_for("kavita", "v0.9.1.4"))
-        self.assertEqual(plan["release_tag"], "kavita-v0.9.1.4-r2")
-        self.assertEqual(plan["version"], "0.9.100402")
+        self.assertEqual(plan["release_tag"], "kavita-v0.9.1.4-r3")
+        self.assertEqual(plan["version"], "0.9.100403")
         self.assertEqual(plan["upstream_version"], "0.9.1.4")
         self.assertEqual(plan["assets"]["arm"]["name"], "kavita-linux-arm64.tar.gz")
         tags = ("v0.9.1", "v0.9.1.3", "v0.9.1.4", "v0.9.2", "v0.10.0")
         mapped = [tuple(map(int, fpk.versions("kavita", tag)[1].split("."))) for tag in tags]
         self.assertEqual(mapped, sorted(set(mapped)))
-        builds = [("v0.9.1.4", 0), ("v0.9.1.4", 1), ("v0.9.1.4", 2), ("v0.9.1.5", 1)]
+        builds = [("v0.9.1.4", revision) for revision in range(4)] + [("v0.9.1.5", 1)]
         mapped = [tuple(map(int, fpk.versions("kavita", tag, revision)[1].split("."))) for tag, revision in builds]
         self.assertEqual(mapped, sorted(set(mapped)))
 
     def test_slskd_version_and_asset_name(self):
         plan = fpk.resolve("slskd", release_for("slskd", "0.26.2"))
-        self.assertEqual(plan["version"], "0.26.201")
-        self.assertEqual(plan["release_tag"], "slskd-v0.26.2-r1")
+        self.assertEqual(plan["version"], "0.26.202")
+        self.assertEqual(plan["release_tag"], "slskd-v0.26.2-r2")
         self.assertEqual(plan["assets"]["x86"]["name"], "slskd-0.26.2-linux-x64.zip")
 
     def test_release_without_verified_assets_is_rejected(self):
@@ -129,7 +129,7 @@ class PackageTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, r"SHA-256 mismatch: pdfium-linux-arm64\.tgz"):
                     fpk.build(args)
 
-            with tarfile.open(args.out / "stump_0.1.14_arm.fpk", "r:gz") as archive:
+            with tarfile.open(args.out / "stump_0.1.14-r1_arm.fpk", "r:gz") as archive:
                 with tarfile.open(fileobj=archive.extractfile("app.tgz"), mode="r:gz") as payload:
                     names = payload.getnames()
                     self.assertIn("payload/client/index.html", names)
@@ -174,6 +174,12 @@ class PackageTests(unittest.TestCase):
                     self.assertNotIn(f"{field}=", manifest)
                 self.assertEqual(json.load(archive.extractfile("wizard/install")),
                                  json.load(archive.extractfile("wizard/config")))
+                uninstall = json.load(archive.extractfile("wizard/uninstall"))[0]["items"][0]
+                self.assertEqual(uninstall["field"], "wizard_data_action")
+                self.assertEqual(uninstall["initValue"], "keep")
+                self.assertEqual([option["value"] for option in uninstall["options"]], ["keep", "delete"])
+                self.assertEqual(archive.extractfile("cmd/uninstall_callback").read(),
+                                 (fpk.ROOT / "packaging/uninstall_callback").read_bytes())
                 with tarfile.open(fileobj=archive.extractfile("app.tgz"), mode="r|gz") as payload:
                     self.assertNotIn("ui/config", payload.getnames())
 
@@ -263,6 +269,65 @@ class PackageTests(unittest.TestCase):
             link = runtime / "kavita-runtime" / "config"
             self.assertEqual(link.resolve(), data / "config")
             self.assertEqual(config.read_text(), '{"Port":5000}\n')
+
+
+class UninstallTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.data = self.root / "vol1" / "@appdata" / "Kavita"
+        self.data.mkdir(parents=True)
+        self.data_link = self.root / "var"
+        self.data_link.symlink_to(self.data, target_is_directory=True)
+        self.database = self.data / ".database"
+        self.database.write_text("saved state")
+
+    def uninstall(self, **fields):
+        env = {"PATH": os.defpath, "TRIM_APPNAME": "Kavita", "TRIM_APP_STATUS": "UNINSTALL",
+               "TRIM_PKGVAR": str(self.data_link), **fields}
+        return subprocess.run(
+            ["/bin/sh", fpk.ROOT / "packaging/uninstall_callback"],
+            cwd=self.root, env=env, capture_output=True, text=True,
+        )
+
+    def test_missing_or_non_delete_choice_preserves_data(self):
+        for fields in ({}, {"wizard_data_action": "keep"}, {"wizard_data_action": "unexpected"},
+                       {"wizard_data_action": "delete", "TRIM_APP_STATUS": "UPGRADE"}):
+            with self.subTest(fields=fields):
+                result = self.uninstall(**fields)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(self.database.read_text(), "saved state")
+
+    def test_delete_clears_data_without_following_links_to_shared_files(self):
+        library = self.root / "books"
+        library.mkdir()
+        book = library / "book.epub"
+        book.touch()
+        (self.data / "library").symlink_to(library, target_is_directory=True)
+        (self.data / "cache").mkdir()
+        (self.data / "cache" / "cover").touch()
+
+        for _ in range(2):
+            result = self.uninstall(wizard_data_action="delete")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(list(self.data.iterdir()), [])
+            self.assertTrue(book.is_file())
+
+    def test_delete_rejects_a_symlink_to_another_apps_data(self):
+        other = self.data.with_name("stump")
+        other.mkdir()
+        protected = other / "stump.db"
+        protected.touch()
+        self.data_link.unlink()
+        self.data_link.symlink_to(other, target_is_directory=True)
+        log = self.root / "uninstall.log"
+
+        result = self.uninstall(wizard_data_action="delete", TRIM_TEMP_LOGFILE=str(log))
+
+        self.assertEqual(result.returncode, 1)
+        self.assertTrue(protected.is_file())
+        self.assertIn("应用数据目录与当前应用不匹配", log.read_text())
 
 
 if __name__ == "__main__":

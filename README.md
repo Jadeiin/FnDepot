@@ -59,6 +59,12 @@ rm -f "$plan"
 
 共享启动脚本将日志写到各应用的 `TRIM_PKGVAR/service.log`。测试时检查启停和覆盖升级后数据是否保留。应用专属配置见收录列表中的安装说明。
 
+## 卸载
+
+在飞牛应用中心卸载时，四个应用都默认选择「保留数据」，便于重装时继续使用。选择「删除应用数据」会清空该应用的 `TRIM_PKGVAR`，包括 slskd 保存在其中的下载文件。应用中心负责管理目录本身。 [飞牛卸载向导文档](https://developer.fnnas.com/docs/core-concepts/wizard/) · [飞牛生命周期文档](https://developer.fnnas.com/docs/core-concepts/framework/)
+
+Moo 0.6.566 的一键卸载使用保留数据模式。 [Moo 卸载实现](https://github.com/Blue-Mink/moo/blob/v0.6.566/internal/api/store_ops.go#L387-L393)
+
 ## 来源
 
 打包保留上游归档中的许可文件，并在 `UPSTREAM.txt` 记录源码、二进制资产和 SHA-256。图标来源见各应用说明。

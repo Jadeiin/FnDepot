@@ -7,7 +7,7 @@
   "categories": ["影音娱乐"],
   "port": 5030,
   "executable": "slskd",
-  "package_revision": 1,
+  "package_revision": 2,
   "assets": {
     "x86": "slskd-{version}-linux-x64.zip",
     "arm": "slskd-{version}-linux-arm64.zip"
