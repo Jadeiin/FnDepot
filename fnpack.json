@@ -179,6 +179,48 @@
         }
       },
       "readme_url": "apps/slskd/README.md"
+    },
+    "stump": {
+      "display_name": "Stump",
+      "desc": "支持 OPDS 的漫画和电子书阅读服务器",
+      "platform": [
+        "x86",
+        "arm"
+      ],
+      "categories": [
+        "影音娱乐"
+      ],
+      "labels": [
+        "media"
+      ],
+      "icon_url": "apps/stump/icon-256.png",
+      "maintainer": "Stump",
+      "maintainer_url": "https://github.com/stumpapp/stump",
+      "distributor": "Jadeiin",
+      "distributor_url": "https://github.com/Jadeiin/FnDepot",
+      "run_as": "package",
+      "install_type": "",
+      "is_docker": false,
+      "service_port": "10801",
+      "releases": {
+        "0.1.14": {
+          "updated_at": "2026-11-24T06:09:58Z",
+          "changelog": "Upstream v0.1.14",
+          "packages": {
+            "x86": {
+              "download_url": "https://github.com/Jadeiin/FnDepot/releases/download/stump-v0.1.14/stump_0.1.14_x86.fpk",
+              "sha256": "69dd5b5c191ab0a47282249e52ede38f09c2cd1624dd922b53e441b267539e17",
+              "size": 46011683
+            },
+            "arm": {
+              "download_url": "https://github.com/Jadeiin/FnDepot/releases/download/stump-v0.1.14/stump_0.1.14_arm.fpk",
+              "sha256": "0882cfc3ae22adb4dba6b2650dbaa282e75b3be8ec73f7c708e160074de815c8",
+              "size": 45453471
+            }
+          }
+        }
+      },
+      "readme_url": "apps/stump/README.md"
     }
   }
 }
