@@ -29,6 +29,22 @@
       "is_docker": false,
       "service_port": "",
       "releases": {
+        "0.21.201": {
+          "updated_at": "2026-11-24T07:59:52Z",
+          "changelog": "Upstream v0.21.2 · FPK r1",
+          "packages": {
+            "x86": {
+              "download_url": "https://github.com/Jadeiin/FnDepot/releases/download/beszel-agent-v0.21.2-r1/beszel-agent_0.21.2-r1_x86.fpk",
+              "sha256": "2637c1a3f5053ce051418e3a232e689f419360e90ef1f51d1fd9aec05f88492a",
+              "size": 4490914
+            },
+            "arm": {
+              "download_url": "https://github.com/Jadeiin/FnDepot/releases/download/beszel-agent-v0.21.2-r1/beszel-agent_0.21.2-r1_arm.fpk",
+              "sha256": "827e55a478c374b03993f7bb6b1b815a6bc8939b9be9a7c9bb2fd7574593c403",
+              "size": 4034189
+            }
+          }
+        },
         "0.21.2": {
           "updated_at": "2026-11-23T16:47:34Z",
           "changelog": "Upstream v0.21.2",
@@ -71,6 +87,22 @@
       "is_docker": false,
       "service_port": "5000",
       "releases": {
+        "0.9.100403": {
+          "updated_at": "2026-11-24T08:00:46Z",
+          "changelog": "Upstream v0.9.1.4 · FPK r3",
+          "packages": {
+            "x86": {
+              "download_url": "https://github.com/Jadeiin/FnDepot/releases/download/kavita-v0.9.1.4-r3/Kavita_0.9.1.4-r3_x86.fpk",
+              "sha256": "ac0e90f8c2b18b7646b6dc71ebe65c657d2736904ba7ee426c68379a7e040ae8",
+              "size": 117102624
+            },
+            "arm": {
+              "download_url": "https://github.com/Jadeiin/FnDepot/releases/download/kavita-v0.9.1.4-r3/Kavita_0.9.1.4-r3_arm.fpk",
+              "sha256": "ad9ed5bfab30bdfb5be740e4064dbcb74bb35416dfa344d8d0fb7081cf54abdb",
+              "size": 114784696
+            }
+          }
+        },
         "0.9.100402": {
           "updated_at": "2026-11-23T15:00:08Z",
           "changelog": "Upstream v0.9.1.4 · FPK r2",
@@ -145,6 +177,22 @@
       "is_docker": false,
       "service_port": "5030",
       "releases": {
+        "0.26.202": {
+          "updated_at": "2026-11-24T08:00:32Z",
+          "changelog": "Upstream v0.26.2 · FPK r2",
+          "packages": {
+            "x86": {
+              "download_url": "https://github.com/Jadeiin/FnDepot/releases/download/slskd-v0.26.2-r2/slskd_0.26.2-r2_x86.fpk",
+              "sha256": "fdf385d41edfca81185800aeb27a31bfc3644c4753934a0230c08009a0f02f7f",
+              "size": 54705383
+            },
+            "arm": {
+              "download_url": "https://github.com/Jadeiin/FnDepot/releases/download/slskd-v0.26.2-r2/slskd_0.26.2-r2_arm.fpk",
+              "sha256": "c4d86fd6abfa45135af2fc922334836583b3ff88c01573b2b490e106f4142d3d",
+              "size": 52497492
+            }
+          }
+        },
         "0.26.201": {
           "updated_at": "2026-11-23T15:00:00Z",
           "changelog": "Upstream v0.26.2 · FPK r1",
@@ -203,6 +251,22 @@
       "is_docker": false,
       "service_port": "10801",
       "releases": {
+        "0.1.1401": {
+          "updated_at": "2026-11-24T08:00:09Z",
+          "changelog": "Upstream v0.1.14 · FPK r1",
+          "packages": {
+            "x86": {
+              "download_url": "https://github.com/Jadeiin/FnDepot/releases/download/stump-v0.1.14-r1/stump_0.1.14-r1_x86.fpk",
+              "sha256": "d627ffd4fac2d9654df14f632ad531b19b2c864b3a5b3c00f65deb2aa32db35f",
+              "size": 46043421
+            },
+            "arm": {
+              "download_url": "https://github.com/Jadeiin/FnDepot/releases/download/stump-v0.1.14-r1/stump_0.1.14-r1_arm.fpk",
+              "sha256": "c9cd23833f11dd8a4a2bf2c8de07e15c5774bf66fe7f786a3d0d5d5e4440c38f",
+              "size": 45481570
+            }
+          }
+        },
         "0.1.14": {
           "updated_at": "2026-11-24T06:09:58Z",
           "changelog": "Upstream v0.1.14",
