@@ -65,6 +65,7 @@ class App:
     categories: list[Category] = field(default_factory=lambda: [Category.SYSTEM_TOOLS])
     package_user: str = ""
     package_revision: int = 0
+    runtime_assets: dict[str, dict] = field(default_factory=dict)
 
 
 def load_apps(directory):
@@ -89,6 +90,8 @@ def load_apps(directory):
             raise ValueError(f"Expected a valid, unique package_id in {config}")
         if not app.assets or app.assets.keys() - ARCHES.keys():
             raise ValueError(f"Expected x86 or arm release assets in {config}")
+        if app.runtime_assets.keys() - app.assets.keys():
+            raise ValueError(f"Runtime asset has no matching application architecture in {config}")
         if app.version_parts not in (3, 4):
             raise ValueError(f"Expected version_parts of 3 or 4 in {config}")
         if type(app.package_revision) is not int or not 0 <= app.package_revision < PACKAGE_REVISION_BASE:
@@ -161,7 +164,7 @@ def resolve(app_name, release):
             raise ValueError(f"Missing upstream size or SHA-256: {name}")
         assets[arch] = {"name": name, "url": url, "sha256": digest[7:], "size": asset["size"]}
 
-    return {
+    plan = {
         "app": app_name,
         "tag": tag,
         "release_tag": f"{app_name}-v{release_version(upstream_version, app.package_revision)}",
@@ -170,6 +173,9 @@ def resolve(app_name, release):
         "source_url": f"https://github.com/{app.repo}/tree/{tag}",
         "assets": assets,
     }
+    if app.runtime_assets:
+        plan["runtime_assets"] = app.runtime_assets
+    return plan
 
 
 def sha256(path):
@@ -191,6 +197,18 @@ def download(url, path):
     request = Request(url, headers={"User-Agent": "native-fnos-fpk"})
     with urlopen(request, timeout=120) as response, path.open("wb") as output:
         shutil.copyfileobj(response, output, length=1024 * 1024)
+
+
+def verified_asset(asset, staging, asset_dir):
+    name = asset["name"]
+    if not name or name == ".." or Path(name).name != name:
+        raise ValueError(f"Invalid upstream asset name: {name!r}")
+    archive = (asset_dir or staging) / name
+    if asset_dir is None:
+        download(asset["url"], archive)
+    if archive.stat().st_size != asset["size"] or sha256(archive) != asset["sha256"]:
+        raise ValueError(f"Upstream asset size or SHA-256 mismatch: {name}")
+    return archive
 
 
 def fnpack_binary(location, staging):
@@ -243,7 +261,7 @@ def check_binary(binary, arch):
         raise ValueError(f"{binary.name} is not a Linux {arch} executable")
 
 
-def create_package(plan, arch, directory, upstream_archive):
+def create_package(plan, arch, directory, upstream_archive, runtime_archive=None):
     slug = plan["app"]
     app = APPS[slug]
     template = ROOT / "apps" / slug
@@ -267,6 +285,16 @@ def create_package(plan, arch, directory, upstream_archive):
         # A flat archive may leave the executable in the mode-0700 staging directory.
         payload_dir.chmod(0o755)
 
+    bundled_assets = [plan["assets"][arch]]
+    if runtime_archive is not None:
+        runtime_dir = payload_dir / "runtime"
+        runtime_dir.mkdir()
+        unpack(runtime_archive, runtime_dir)
+        bundled_assets.append(plan["runtime_assets"][arch])
+
+    license_file = template / "LICENSE"
+    if license_file.is_file():
+        shutil.copyfile(license_file, app_dir / "LICENSE")
     shutil.copyfile(template / "service.sh", app_dir / "service.sh")
     manifest = {
         "appname": app.package_id,
@@ -282,11 +310,9 @@ def create_package(plan, arch, directory, upstream_archive):
         "disable_authorization_path": "false",
         "changelog": f"Upstream {plan['tag']}",
     }
-    (app_dir / "UPSTREAM.txt").write_text(
-        f"{plan['source_url']}\n{plan['assets'][arch]['url']}\n"
-        f"SHA-256: {plan['assets'][arch]['sha256']}\n",
-        encoding="utf-8",
-    )
+    provenance = [f"{plan['source_url']}\n"]
+    provenance.extend(f"{asset['url']}\nSHA-256: {asset['sha256']}\n" for asset in bundled_assets)
+    (app_dir / "UPSTREAM.txt").write_text("".join(provenance), encoding="utf-8")
     username = app.package_user or app.package_id.replace("-", "_")
     privilege = {"defaults": {"run-as": "package"}, "username": username, "groupname": username}
     (config_dir / "privilege").write_text(json.dumps(privilege) + "\n", encoding="utf-8")
@@ -366,6 +392,8 @@ def build(args):
     release_tag = f"{slug}-v{release_version(upstream_version, app.package_revision)}"
     if (plan["upstream_version"], plan["version"], plan["release_tag"]) != (upstream_version, version, release_tag):
         raise ValueError("Build plan versions do not match the current app configuration. Run resolve again.")
+    if plan.get("runtime_assets", {}) != app.runtime_assets:
+        raise ValueError("Build plan runtime assets do not match the current app configuration. Run resolve again.")
     all_arches = args.arch in ("all", "both")
     arches = tuple(app.assets) if all_arches else (args.arch,)
     if not all_arches and args.arch not in app.assets:
@@ -388,20 +416,14 @@ def build(args):
         fnpack = None if args.community else fnpack_binary(args.fnpack, staging)
         packages = []
         for arch in arches:
-            asset = plan["assets"][arch]
-            asset_name = asset["name"]
-            if Path(asset_name).name != asset_name:
-                raise ValueError(f"Invalid upstream asset name: {asset_name!r}")
             with tempfile.TemporaryDirectory(dir=staging) as work_dir:
                 work = Path(work_dir)
-                upstream_archive = (args.asset_dir or work) / asset_name
-                if args.asset_dir is None:
-                    download(asset["url"], upstream_archive)
-                if upstream_archive.stat().st_size != asset["size"] or sha256(upstream_archive) != asset["sha256"]:
-                    raise ValueError(f"Upstream asset size or SHA-256 mismatch: {asset_name}")
+                upstream_archive = verified_asset(plan["assets"][arch], work, args.asset_dir)
+                runtime_asset = app.runtime_assets.get(arch)
+                runtime_archive = verified_asset(runtime_asset, work, args.asset_dir) if runtime_asset else None
 
                 project = work / "package"
-                create_package(plan, arch, project, upstream_archive)
+                create_package(plan, arch, project, upstream_archive, runtime_archive)
                 actual = work / f"{app.package_id}.fpk"
                 if args.community:
                     build_community_package(project, actual)

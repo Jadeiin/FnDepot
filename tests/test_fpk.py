@@ -7,6 +7,9 @@ import tarfile
 import tempfile
 import unittest
 import zipfile
+from argparse import Namespace
+from contextlib import redirect_stdout
+from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 from urllib.parse import quote
@@ -95,6 +98,46 @@ class UpstreamTests(unittest.TestCase):
 
 
 class PackageTests(unittest.TestCase):
+    def test_stump_build_verifies_and_bundles_pdfium(self):
+        app = fpk.APPS["stump"]
+        release = release_for("stump", "v0.1.14")
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            upstream = directory / app.assets["arm"]
+            elf = b"\x7fELF\x02\x01" + bytes(12) + (183).to_bytes(2, "little")
+            with zipfile.ZipFile(upstream, "w") as archive:
+                archive.writestr("stump_server", elf)
+                archive.writestr("client/index.html", "<title>Stump</title>")
+            next(asset for asset in release["assets"] if asset["name"] == upstream.name).update(
+                size=upstream.stat().st_size, digest=f"sha256:{fpk.sha256(upstream)}",
+            )
+
+            runtime = directory / app.runtime_assets["arm"]["name"]
+            with tarfile.open(runtime, "w:gz") as archive:
+                for name in ("lib/libpdfium.so", "LICENSE"):
+                    item = tarfile.TarInfo(name)
+                    item.size = len(elf)
+                    archive.addfile(item, io.BytesIO(elf))
+            pinned = {**app.runtime_assets["arm"], "size": runtime.stat().st_size, "sha256": fpk.sha256(runtime)}
+            config = replace(app, runtime_assets={**app.runtime_assets, "arm": pinned})
+            args = Namespace(plan=directory / "plan.json", arch="arm", out=directory / "out",
+                             asset_dir=directory, community=True, key=None, cert=None)
+            with patch.dict(fpk.APPS, {"stump": config}), redirect_stdout(io.StringIO()):
+                args.plan.write_text(json.dumps(fpk.resolve("stump", release)), encoding="utf-8")
+                fpk.build(args)
+                runtime.write_bytes(bytes(pinned["size"]))
+                with self.assertRaisesRegex(ValueError, r"SHA-256 mismatch: pdfium-linux-arm64\.tgz"):
+                    fpk.build(args)
+
+            with tarfile.open(args.out / "stump_0.1.14_arm.fpk", "r:gz") as archive:
+                with tarfile.open(fileobj=archive.extractfile("app.tgz"), mode="r:gz") as payload:
+                    names = payload.getnames()
+                    self.assertIn("payload/client/index.html", names)
+                    self.assertIn("payload/runtime/lib/libpdfium.so", names)
+                    self.assertIn("payload/runtime/LICENSE", names)
+                    self.assertIn("LICENSE", names)
+                    self.assertIn(pinned["sha256"], payload.extractfile("UPSTREAM.txt").read().decode())
+
     def test_slskd_payload_is_accessible_to_the_package_user(self):
         plan = fpk.resolve("slskd", release_for("slskd", "0.26.2"))
         with tempfile.TemporaryDirectory() as temporary:
